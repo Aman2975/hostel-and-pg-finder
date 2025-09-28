@@ -28,7 +28,7 @@ Android App (Kotlin + Jetpack Compose) ←→ REST API (Node.js + Express) ←�
 
 ### Prerequisites
 - **Node.js** (v16 or higher)
-- **MySQL** (v8.0 or higher)
+- **SQLite3** (included with Node.js)
 - **Android Studio** (Latest version)
 - **Java 11** or higher
 
@@ -40,24 +40,103 @@ Android App (Kotlin + Jetpack Compose) ←→ REST API (Node.js + Express) ←�
    npm install
    ```
 
-2. **Configure Database**
-   - Create MySQL database
-   - Update `backend/config.env` with your MySQL credentials:
+2. **Database Configuration**
+   - **SQLite3** is used (no separate database server needed)
+   - Database file: `backend/database.sqlite`
+   - Tables are created automatically on first run
+
+3. **Environment Configuration**
+   - Update `backend/config.env` with your settings:
    ```env
-   DB_HOST=localhost
-   DB_USER=root
-   DB_PASSWORD=your_mysql_password
-   DB_NAME=hostel_pg_finder
+   PORT=5002
+   NODE_ENV=development
    ```
 
-3. **Start Backend Server**
+4. **Start Backend Server**
    ```bash
-   npm start
-   # or for development
-   npm run dev
+   # Start SQLite server
+   node server-sqlite.js
+   
+   # Or for development with auto-restart
+   npx nodemon server-sqlite.js
    ```
 
-   Server will run on `http://localhost:3000`
+   Server will run on `http://localhost:5002`
+
+5. **Verify Setup**
+   - **Admin Panel**: `http://localhost:5002/admin`
+   - **API Base URL**: `http://localhost:5002/api`
+   - **Health Check**: `http://localhost:5002/api/health`
+
+### Detailed Backend Setup Steps
+
+1. **Navigate to Backend Directory**
+   ```bash
+   cd backend
+   ```
+
+2. **Install Node.js Dependencies**
+   ```bash
+   npm install
+   ```
+   This installs:
+   - `express` - Web framework
+   - `sqlite3` - Database driver
+   - `cors` - Cross-origin resource sharing
+   - `dotenv` - Environment variables
+   - `ejs` - Template engine
+   - `bcrypt` - Password hashing
+   - `jsonwebtoken` - JWT authentication
+
+3. **Check Environment Configuration**
+   ```bash
+   # Check if config.env exists
+   cat config.env
+   ```
+   Should contain:
+   ```env
+   PORT=5002
+   NODE_ENV=development
+   ```
+
+4. **Start the Server**
+   ```bash
+   # Start SQLite server
+   node server-sqlite.js
+   ```
+   
+   Expected output:
+   ```
+   ✅ SQLite database connected successfully
+   ✅ Database tables created successfully
+   ✅ Sample data inserted successfully
+   🚀 Server running on port 5002
+   📱 Admin Panel: http://localhost:5002/admin
+   🔗 API Base URL: http://localhost:5002/api
+   ```
+
+5. **Test Server Endpoints**
+   ```bash
+   # Test health endpoint
+   curl http://localhost:5002/api/health
+   
+   # Test hostels endpoint
+   curl http://localhost:5002/api/hostels
+   
+   # Test admin panel
+   # Open browser: http://localhost:5002/admin
+   ```
+
+6. **Database Verification**
+   ```bash
+   # Check if database file exists
+   ls -la database.sqlite
+   
+   # View database contents (optional)
+   sqlite3 database.sqlite ".tables"
+   sqlite3 database.sqlite "SELECT COUNT(*) FROM students;"
+   sqlite3 database.sqlite "SELECT COUNT(*) FROM hostels;"
+   ```
 
 ### Android Setup
 
@@ -65,23 +144,35 @@ Android App (Kotlin + Jetpack Compose) ←→ REST API (Node.js + Express) ←�
    - Open `hostelallotementandpgfinder` folder in Android Studio
 
 2. **Update API URL** (if needed)
-   - For emulator: `http://10.0.2.2:3000/api/`
-   - For real device: `http://YOUR_IP_ADDRESS:3000/api/`
+   - For emulator: `http://10.0.2.2:5002/api/`
+   - For real device: `http://YOUR_IP_ADDRESS:5002/api/`
    - Update in `app/src/main/java/.../network/ApiClient.kt`
 
-3. **Build and Run**
+3. **Network Security Configuration**
+   - Cleartext traffic is allowed for development
+   - Network security config: `app/src/main/res/xml/network_security_config.xml`
+   - Allows HTTP connections to localhost and your IP
+
+4. **Build and Run**
    - Sync project with Gradle files
    - Run on emulator or device
 
 ## 📊 Database Schema
 
+### SQLite Database
+- **File**: `backend/database.sqlite`
+- **Auto-created**: Tables are created automatically on first run
+- **No setup required**: SQLite3 is included with Node.js
+
 ### Tables
-- **users** - Student information and authentication
+- **students** - Student information and authentication
 - **hostels** - Hostel listings and details
 - **pgs** - PG listings and details
-- **bookings** - Student booking requests
-- **favorites** - Student saved properties
-- **reviews** - Property reviews and ratings
+- **hostel_allotments** - Hostel booking requests
+- **pg_bookings** - PG booking requests
+- **admins** - Admin user accounts
+- **notifications** - System notifications
+- **system_logs** - Application logs
 
 ### Sample Data
 The database includes sample hostels and PGs for Patiala/PUP area:
@@ -100,12 +191,22 @@ The database includes sample hostels and PGs for Patiala/PUP area:
 - `GET /api/hostels/:id` - Get hostel by ID
 - `GET /api/hostels/area/:area` - Get hostels by area
 - `GET /api/hostels/search/:term` - Search hostels
+- `POST /api/hostels/book` - Create hostel allotment request
 
 ### PGs
 - `GET /api/pgs` - Get all PGs (with filters)
 - `GET /api/pgs/:id` - Get PG by ID
 - `GET /api/pgs/area/:area` - Get PGs by area
 - `GET /api/pgs/search/:term` - Search PGs
+- `POST /api/pgs/book` - Create PG booking request
+
+### Admin Panel
+- `GET /admin` - Admin dashboard
+- `GET /admin/hostels` - Hostel management
+- `GET /admin/pgs` - PG management
+- `GET /admin/students` - Student management
+- `GET /admin/allotments` - Hostel allotment requests
+- `GET /admin/bookings` - PG booking requests
 
 ## 🎨 UI Features
 
@@ -152,47 +253,62 @@ source backend/database/schema.sql;
 ### Backend API Testing
 ```bash
 # Health check
-curl http://localhost:3000/health
+curl http://localhost:5002/api/health
 
 # Get hostels
-curl http://localhost:3000/api/hostels
+curl http://localhost:5002/api/hostels
 
 # Get PGs
-curl http://localhost:3000/api/pgs
+curl http://localhost:5002/api/pgs
+
+# Test hostel booking
+curl -X POST http://localhost:5002/api/hostels/book \
+  -H "Content-Type: application/json" \
+  -d '{"student_id":"TEST123","property_id":1,"property_type":"hostel","special_requests":"Student Name: Test User\nRoom Type: Single\nDuration: 1 Year\nCourse: CS\nAcademic Year: 2nd Year\nContact: 9876543210\nEmail: test@example.com"}'
 ```
 
+### Admin Panel Testing
+1. **Access**: `http://localhost:5002/admin`
+2. **Dashboard**: View statistics and recent activity
+3. **Hostels**: Manage hostel listings
+4. **Students**: View registered students
+5. **Allotments**: Review hostel requests
+6. **Bookings**: Review PG requests
+
 ### Android Testing
-1. **Login**: Use demo credentials (2024001 / student123)
+1. **Login**: Use demo credentials or register new account
 2. **Register**: Create new student account
-3. **Search**: Test hostel and PG search functionality
-4. **Filters**: Test area and price filters
+3. **Hostel Allotment**: Submit hostel request form
+4. **PG Finder**: Search and filter PGs
+5. **Booking**: Test booking functionality
 
 ## 🔧 Configuration
 
 ### Backend Configuration
-- **Port**: 3000 (configurable in config.env)
-- **Database**: MySQL with connection pooling
-- **CORS**: Enabled for Android app
-- **Rate Limiting**: 100 requests per 15 minutes
+- **Port**: 5002 (configurable in config.env)
+- **Database**: SQLite3 with automatic table creation
+- **CORS**: Enabled for all origins (development)
+- **Admin Panel**: EJS templating with Bootstrap 5
 
 ### Android Configuration
 - **Min SDK**: 24 (Android 7.0)
 - **Target SDK**: 36 (Android 14)
 - **Architecture**: Modern Android with Jetpack Compose
+- **Network Security**: Allows cleartext HTTP for development
 
 ## 🚀 Deployment
 
 ### Backend Deployment
 1. **VPS/Cloud Server**
-   - Install Node.js and MySQL
+   - Install Node.js
    - Clone repository
    - Configure environment variables
-   - Start with PM2: `pm2 start server.js`
+   - Start with PM2: `pm2 start server-sqlite.js`
 
 2. **Database**
-   - Create production database
-   - Import schema
-   - Configure backups
+   - SQLite file: `backend/database.sqlite`
+   - No separate database server needed
+   - Backup the SQLite file regularly
 
 ### Android Deployment
 1. **Generate Signed APK**
@@ -245,16 +361,21 @@ For issues and questions:
 ## 🔄 Updates
 
 ### Recent Changes
-- ✅ MySQL backend integration
-- ✅ REST API implementation
-- ✅ Android networking setup
+- ✅ SQLite backend integration (replaced MySQL)
+- ✅ REST API implementation with booking endpoints
+- ✅ Android networking setup with cleartext support
 - ✅ Purple theme implementation
 - ✅ Student-focused design
+- ✅ Admin panel with EJS templating
+- ✅ Hostel allotment request form with complete field mapping
+- ✅ PG booking functionality
+- ✅ Comprehensive database schema
 
 ### Planned Features
 - 🔄 Real-time notifications
 - 🔄 Image upload for properties
 - 🔄 Advanced search filters
-- 🔄 Booking management
 - 🔄 Payment integration
+- 🔄 Email notifications
+- 🔄 Mobile app push notifications
 

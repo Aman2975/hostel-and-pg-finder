@@ -6,37 +6,37 @@ const router = express.Router();
 router.get('/', async (req, res) => {
     try {
         const sql = `
-            SELECT 
-                'hostel' as property_type,
-                ha.id,
-                ha.status,
-                ha.created_at,
-                s.name as student_name,
-                s.email as student_email,
-                h.name as property_name,
-                h.area as property_area,
-                h.price_per_month
-            FROM hostel_allotments ha
-            JOIN students s ON ha.student_id = s.student_id
-            JOIN hostels h ON ha.hostel_id = h.id
-            
-            UNION ALL
-            
-            SELECT 
-                'pg' as property_type,
-                pb.id,
-                pb.status,
-                pb.created_at,
-                s.name as student_name,
-                s.email as student_email,
-                p.name as property_name,
-                p.area as property_area,
-                p.price_per_month
-            FROM pg_bookings pb
-            JOIN students s ON pb.student_id = s.student_id
-            JOIN pgs p ON pb.pg_id = p.id
-            
-            ORDER BY created_at DESC
+            SELECT * FROM (
+                SELECT 
+                    'hostel' as property_type,
+                    ha.id,
+                    ha.status,
+                    ha.created_at,
+                    s.name as student_name,
+                    s.email as student_email,
+                    h.name as property_name,
+                    h.area as property_area,
+                    h.price_per_month
+                FROM hostel_allotments ha
+                JOIN students s ON ha.student_id = s.student_id
+                JOIN hostels h ON ha.hostel_id = h.id
+                
+                UNION ALL
+                
+                SELECT 
+                    'pg' as property_type,
+                    pb.id,
+                    pb.status,
+                    pb.created_at,
+                    s.name as student_name,
+                    s.email as student_email,
+                    p.name as property_name,
+                    p.area as property_area,
+                    p.price_per_month
+                FROM pg_bookings pb
+                JOIN students s ON pb.student_id = s.student_id
+                JOIN pgs p ON pb.pg_id = p.id
+            ) ORDER BY created_at DESC
         `;
         
         const bookings = await query(sql);

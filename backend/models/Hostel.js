@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const { query, get, run } = require('../config/sqlite-database');
 
 class Hostel {
     constructor(data) {
@@ -19,32 +19,32 @@ class Hostel {
     // Get all hostels
     static async getAll(filters = {}) {
         try {
-            let query = 'SELECT * FROM hostels WHERE is_active = TRUE';
+            let sqlQuery = 'SELECT * FROM hostels WHERE is_active = 1';
             const values = [];
 
             // Apply filters
             if (filters.area) {
-                query += ' AND area = ?';
+                sqlQuery += ' AND area = ?';
                 values.push(filters.area);
             }
 
             if (filters.min_price) {
-                query += ' AND price_per_month >= ?';
+                sqlQuery += ' AND price_per_month >= ?';
                 values.push(filters.min_price);
             }
 
             if (filters.max_price) {
-                query += ' AND price_per_month <= ?';
+                sqlQuery += ' AND price_per_month <= ?';
                 values.push(filters.max_price);
             }
 
             if (filters.available_rooms) {
-                query += ' AND available_rooms > 0';
+                sqlQuery += ' AND available_rooms > 0';
             }
 
-            query += ' ORDER BY created_at DESC';
+            sqlQuery += ' ORDER BY created_at DESC';
 
-            const [rows] = await db.pool.execute(query, values);
+            const rows = await query(sqlQuery, values);
             return rows;
         } catch (error) {
             throw new Error(`Error getting hostels: ${error.message}`);
@@ -54,9 +54,9 @@ class Hostel {
     // Get hostel by ID
     static async getById(id) {
         try {
-            const query = 'SELECT * FROM hostels WHERE id = ?';
-            const [rows] = await db.pool.execute(query, [id]);
-            return rows[0] || null;
+            const sqlQuery = 'SELECT * FROM hostels WHERE id = ?';
+            const row = await get(sqlQuery, [id]);
+            return row || null;
         } catch (error) {
             throw new Error(`Error getting hostel: ${error.message}`);
         }
@@ -65,8 +65,8 @@ class Hostel {
     // Get hostels by area
     static async getByArea(area) {
         try {
-            const query = 'SELECT * FROM hostels WHERE area = ? AND is_active = TRUE ORDER BY created_at DESC';
-            const [rows] = await db.pool.execute(query, [area]);
+            const sqlQuery = 'SELECT * FROM hostels WHERE area = ? AND is_active = 1 ORDER BY created_at DESC';
+            const rows = await query(sqlQuery, [area]);
             return rows;
         } catch (error) {
             throw new Error(`Error getting hostels by area: ${error.message}`);
@@ -76,7 +76,7 @@ class Hostel {
     // Create new hostel
     static async create(hostelData) {
         try {
-            const query = `
+            const sqlQuery = `
                 INSERT INTO hostels (name, location, area, available_rooms, total_rooms, 
                                    price_per_month, amenities, contact_number, description)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -94,7 +94,7 @@ class Hostel {
                 hostelData.description
             ];
 
-            const [result] = await db.pool.execute(query, values);
+            const result = await run(sqlQuery, values);
             return { id: result.insertId, ...hostelData };
         } catch (error) {
             throw new Error(`Error creating hostel: ${error.message}`);
@@ -124,10 +124,10 @@ class Hostel {
             }
 
             values.push(id);
-            const query = `UPDATE hostels SET ${updateFields.join(', ')} WHERE id = ?`;
+            const sqlQuery = `UPDATE hostels SET ${updateFields.join(', ')}, updated_at = datetime('now') WHERE id = ?`;
             
-            const [result] = await db.pool.execute(query, values);
-            return result.affectedRows > 0;
+            const result = await run(sqlQuery, values);
+            return result.changes > 0;
         } catch (error) {
             throw new Error(`Error updating hostel: ${error.message}`);
         }
@@ -136,9 +136,9 @@ class Hostel {
     // Delete hostel (soft delete)
     static async delete(id) {
         try {
-            const query = 'UPDATE hostels SET is_active = FALSE WHERE id = ?';
-            const [result] = await db.pool.execute(query, [id]);
-            return result.affectedRows > 0;
+            const sqlQuery = 'UPDATE hostels SET is_active = 0 WHERE id = ?';
+            const result = await run(sqlQuery, [id]);
+            return result.changes > 0;
         } catch (error) {
             throw new Error(`Error deleting hostel: ${error.message}`);
         }
@@ -147,32 +147,32 @@ class Hostel {
     // Search hostels
     static async search(searchTerm, filters = {}) {
         try {
-            let query = `
+            let sqlQuery = `
                 SELECT * FROM hostels 
-                WHERE is_active = TRUE 
+                WHERE is_active = 1 
                 AND (name LIKE ? OR location LIKE ? OR area LIKE ? OR description LIKE ?)
             `;
             const values = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`];
 
             // Apply additional filters
             if (filters.area) {
-                query += ' AND area = ?';
+                sqlQuery += ' AND area = ?';
                 values.push(filters.area);
             }
 
             if (filters.min_price) {
-                query += ' AND price_per_month >= ?';
+                sqlQuery += ' AND price_per_month >= ?';
                 values.push(filters.min_price);
             }
 
             if (filters.max_price) {
-                query += ' AND price_per_month <= ?';
+                sqlQuery += ' AND price_per_month <= ?';
                 values.push(filters.max_price);
             }
 
-            query += ' ORDER BY created_at DESC';
+            sqlQuery += ' ORDER BY created_at DESC';
 
-            const [rows] = await db.pool.execute(query, values);
+            const rows = await query(sqlQuery, values);
             return rows;
         } catch (error) {
             throw new Error(`Error searching hostels: ${error.message}`);
@@ -182,8 +182,8 @@ class Hostel {
     // Get available areas
     static async getAreas() {
         try {
-            const query = 'SELECT DISTINCT area FROM hostels WHERE is_active = TRUE ORDER BY area';
-            const [rows] = await db.pool.execute(query);
+            const sqlQuery = 'SELECT DISTINCT area FROM hostels WHERE is_active = 1 ORDER BY area';
+            const rows = await query(sqlQuery, []);
             return rows.map(row => row.area);
         } catch (error) {
             throw new Error(`Error getting areas: ${error.message}`);
@@ -192,5 +192,3 @@ class Hostel {
 }
 
 module.exports = Hostel;
-
-

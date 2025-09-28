@@ -1,4 +1,4 @@
-const db = require('../config/database');
+const { query, get, run } = require('../config/sqlite-database');
 
 class PG {
     constructor(data) {
@@ -20,37 +20,37 @@ class PG {
     // Get all PGs
     static async getAll(filters = {}) {
         try {
-            let query = 'SELECT * FROM pgs WHERE is_active = TRUE';
+            let sqlQuery = 'SELECT * FROM pgs WHERE is_active = 1';
             const values = [];
 
             // Apply filters
             if (filters.area) {
-                query += ' AND area = ?';
+                sqlQuery += ' AND area = ?';
                 values.push(filters.area);
             }
 
             if (filters.gender) {
-                query += ' AND (gender_preference = ? OR gender_preference = "Unisex")';
+                sqlQuery += ' AND (gender_preference = ? OR gender_preference = "Unisex")';
                 values.push(filters.gender);
             }
 
             if (filters.min_price) {
-                query += ' AND price_per_month >= ?';
+                sqlQuery += ' AND price_per_month >= ?';
                 values.push(filters.min_price);
             }
 
             if (filters.max_price) {
-                query += ' AND price_per_month <= ?';
+                sqlQuery += ' AND price_per_month <= ?';
                 values.push(filters.max_price);
             }
 
             if (filters.available_spots) {
-                query += ' AND available_spots > 0';
+                sqlQuery += ' AND available_spots > 0';
             }
 
-            query += ' ORDER BY created_at DESC';
+            sqlQuery += ' ORDER BY created_at DESC';
 
-            const [rows] = await db.pool.execute(query, values);
+            const rows = await query(sqlQuery, values);
             return rows;
         } catch (error) {
             throw new Error(`Error getting PGs: ${error.message}`);
@@ -60,9 +60,9 @@ class PG {
     // Get PG by ID
     static async getById(id) {
         try {
-            const query = 'SELECT * FROM pgs WHERE id = ?';
-            const [rows] = await db.pool.execute(query, [id]);
-            return rows[0] || null;
+            const sqlQuery = 'SELECT * FROM pgs WHERE id = ?';
+            const row = await get(sqlQuery, [id]);
+            return row || null;
         } catch (error) {
             throw new Error(`Error getting PG: ${error.message}`);
         }
@@ -71,8 +71,8 @@ class PG {
     // Get PGs by area
     static async getByArea(area) {
         try {
-            const query = 'SELECT * FROM pgs WHERE area = ? AND is_active = TRUE ORDER BY created_at DESC';
-            const [rows] = await db.pool.execute(query, [area]);
+            const sqlQuery = 'SELECT * FROM pgs WHERE area = ? AND is_active = 1 ORDER BY created_at DESC';
+            const rows = await query(sqlQuery, [area]);
             return rows;
         } catch (error) {
             throw new Error(`Error getting PGs by area: ${error.message}`);
@@ -82,7 +82,7 @@ class PG {
     // Create new PG
     static async create(pgData) {
         try {
-            const query = `
+            const sqlQuery = `
                 INSERT INTO pgs (name, area, location, available_spots, total_spots, 
                                price_per_month, gender_preference, amenities, contact_number, description, image_url)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -102,7 +102,7 @@ class PG {
                 pgData.image_url
             ];
 
-            const [result] = await db.pool.execute(query, values);
+            const result = await run(sqlQuery, values);
             return { id: result.insertId, ...pgData };
         } catch (error) {
             throw new Error(`Error creating PG: ${error.message}`);
@@ -133,10 +133,10 @@ class PG {
             }
 
             values.push(id);
-            const query = `UPDATE pgs SET ${updateFields.join(', ')} WHERE id = ?`;
+            const sqlQuery = `UPDATE pgs SET ${updateFields.join(', ')}, updated_at = datetime('now') WHERE id = ?`;
             
-            const [result] = await db.pool.execute(query, values);
-            return result.affectedRows > 0;
+            const result = await run(sqlQuery, values);
+            return result.changes > 0;
         } catch (error) {
             throw new Error(`Error updating PG: ${error.message}`);
         }
@@ -145,9 +145,9 @@ class PG {
     // Delete PG (soft delete)
     static async delete(id) {
         try {
-            const query = 'UPDATE pgs SET is_active = FALSE WHERE id = ?';
-            const [result] = await db.pool.execute(query, [id]);
-            return result.affectedRows > 0;
+            const sqlQuery = 'UPDATE pgs SET is_active = 0 WHERE id = ?';
+            const result = await run(sqlQuery, [id]);
+            return result.changes > 0;
         } catch (error) {
             throw new Error(`Error deleting PG: ${error.message}`);
         }
@@ -156,37 +156,37 @@ class PG {
     // Search PGs
     static async search(searchTerm, filters = {}) {
         try {
-            let query = `
+            let sqlQuery = `
                 SELECT * FROM pgs 
-                WHERE is_active = TRUE 
+                WHERE is_active = 1 
                 AND (name LIKE ? OR location LIKE ? OR area LIKE ? OR description LIKE ?)
             `;
             const values = [`%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`, `%${searchTerm}%`];
 
             // Apply additional filters
             if (filters.area) {
-                query += ' AND area = ?';
+                sqlQuery += ' AND area = ?';
                 values.push(filters.area);
             }
 
             if (filters.gender) {
-                query += ' AND (gender_preference = ? OR gender_preference = "Unisex")';
+                sqlQuery += ' AND (gender_preference = ? OR gender_preference = "Unisex")';
                 values.push(filters.gender);
             }
 
             if (filters.min_price) {
-                query += ' AND price_per_month >= ?';
+                sqlQuery += ' AND price_per_month >= ?';
                 values.push(filters.min_price);
             }
 
             if (filters.max_price) {
-                query += ' AND price_per_month <= ?';
+                sqlQuery += ' AND price_per_month <= ?';
                 values.push(filters.max_price);
             }
 
-            query += ' ORDER BY created_at DESC';
+            sqlQuery += ' ORDER BY created_at DESC';
 
-            const [rows] = await db.pool.execute(query, values);
+            const rows = await query(sqlQuery, values);
             return rows;
         } catch (error) {
             throw new Error(`Error searching PGs: ${error.message}`);
@@ -196,8 +196,8 @@ class PG {
     // Get available areas
     static async getAreas() {
         try {
-            const query = 'SELECT DISTINCT area FROM pgs WHERE is_active = TRUE ORDER BY area';
-            const [rows] = await db.pool.execute(query);
+            const sqlQuery = 'SELECT DISTINCT area FROM pgs WHERE is_active = 1 ORDER BY area';
+            const rows = await query(sqlQuery, []);
             return rows.map(row => row.area);
         } catch (error) {
             throw new Error(`Error getting areas: ${error.message}`);
@@ -207,8 +207,8 @@ class PG {
     // Get gender preferences
     static async getGenderPreferences() {
         try {
-            const query = 'SELECT DISTINCT gender_preference FROM pgs WHERE is_active = TRUE ORDER BY gender_preference';
-            const [rows] = await db.pool.execute(query);
+            const sqlQuery = 'SELECT DISTINCT gender_preference FROM pgs WHERE is_active = 1 ORDER BY gender_preference';
+            const rows = await query(sqlQuery, []);
             return rows.map(row => row.gender_preference);
         } catch (error) {
             throw new Error(`Error getting gender preferences: ${error.message}`);
@@ -217,5 +217,3 @@ class PG {
 }
 
 module.exports = PG;
-
-
