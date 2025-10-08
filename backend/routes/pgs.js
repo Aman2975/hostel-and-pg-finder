@@ -1,6 +1,6 @@
 const express = require('express');
 const PG = require('../models/PG');
-const db = require('../config/sqlite-database');
+const { db } = require('../config/sqlite-database');
 const router = express.Router();
 
 // Get all PGs with optional filters

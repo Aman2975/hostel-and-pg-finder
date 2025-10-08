@@ -3,6 +3,7 @@
     <domain-config cleartextTrafficPermitted="true">
         <!-- Allow HTTP traffic to your local server -->
         <domain includeSubdomains="true">10.230.118.182</domain>
+        <domain includeSubdomains="true">10.53.51.182</domain>
         <domain includeSubdomains="true">10.80.98.182</domain>
         <domain includeSubdomains="true">localhost</domain>
         <domain includeSubdomains="true">127.0.0.1</domain>

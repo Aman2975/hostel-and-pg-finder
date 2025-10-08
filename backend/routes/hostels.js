@@ -1,6 +1,6 @@
 const express = require('express');
 const Hostel = require('../models/Hostel');
-const db = require('../config/sqlite-database');
+const { db } = require('../config/sqlite-database');
 const router = express.Router();
 
 // Get all hostels with optional filters
@@ -292,7 +292,7 @@ router.post('/book', async (req, res) => {
         }
 
         // Create comprehensive special requirements text
-        const fullSpecialRequirements = buildString => {
+        const fullSpecialRequirements = () => {
             let requirements = '';
             if (special_requirements) {
                 requirements += `Special Requirements: ${special_requirements}\n`;

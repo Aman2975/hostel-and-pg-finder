@@ -8,7 +8,7 @@ import java.util.concurrent.TimeUnit
 
 object ApiClient {
     // Base URL - Try these different options:
-    private const val BASE_URL = "http://10.230.118.182:5002/api/" // Your wireless network IP
+    private const val BASE_URL = "http://10.53.51.182:5002/api/" // Your wireless network IP
     // Alternative URLs to try if 10.0.2.2 doesn't work:
     // private const val BASE_URL = "http://127.0.0.1:5002/api/" // Localhost
     // private const val BASE_URL = "http://localhost:5002/api/" // Localhost
